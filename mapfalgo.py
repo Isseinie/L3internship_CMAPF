@@ -1,10 +1,9 @@
 #from pysat.solvers import Solver
 from igraph import *
 
-NMAX = 800
 
 def decoupled_exec(G_M, G_C, A) :
-    return [[] for a in A]
+    return 0
 
 def has_conflict(P) :
     return False
@@ -19,7 +18,7 @@ def last_is_disconnected(G_M, G_C, A, P):
     return Solver()
 
 def extract_exec(G_M, G_C, A, constraints):
-    return [[] for a in A]
+    return 0
 
 def pick_config(G_M, G_C, A, t):
     return [[0] for a in A]

@@ -1,5 +1,4 @@
-import pysat
-from pysat.solvers import Solver
+#from pysat.solvers import Solver
 from igraph import *
 
 NMAX = 800
@@ -10,13 +9,13 @@ def decoupled_exec(G_M, G_C, A) :
 def has_conflict(P) :
     return False
 
-def is_connected(G_M, G_C, A, agent, t):
+def is_connected(G_M, G_C, A, agent, t, P):
     return True
 
-def pick_disconnected(G_M, G_C, A):
-    return A[0], 0
+def last_is_disconnected(G_M, G_C, A, P):
+    return False, 0
 
-def find_path(G_M, G_C, A, n, constraints):
+'''def find_path(G_M, G_C, A, n, constraints):
     return Solver()
 
 def extract_exec(G_M, G_C, A, constraints):
@@ -54,6 +53,5 @@ def MAPFmalin(G_M, G_C, A, final_state):
             if not(has_conflict(P_final)) :
                 return P_final
             else :
-                constraints.append(pick_config(G_M, G_C, A, t) != P_extr[t])
-
+                constraints.append(pick_config(G_M, G_C, A, t) != P_extr[t])'''
 

@@ -1,6 +1,10 @@
 #from pysat.solvers import Solver
 from igraph import *
+import numpy as np
 
+#2 graphes : mouvement et connexion
+#A : chaque agent est représenté par un couple (position, but)
+#P : pour chaque t, donne la position de chaque agent ? ou renvoie un A_t
 
 def decoupled_exec(G_M, G_C, A) :
     return 0
@@ -11,16 +15,16 @@ def nb_conflicts(P) :
 def is_connected(G_C, A, i, t, P): #a_i est connecté aux agents a_0... a_i-1 au temps t 
     return True
 
-def last_is_disconnected(G_M, G_C, A, P):
-    return False, 0
-
 def pick_time_with_conflict(P) :
     return len(P)//2
 
 def choose_order(A) :
-    return A
+    i = np.random(len(A))
+    A_ordered = [i]
+    #BFS sur A selon la config initiale ou finale
+    return A_ordered
 
-def choose_best_neighbour(A, i, t, P):
+def choose_best_neighbour(G_C, A, i, t, P):
     return 0 #voisin des a_0...a_i-1 tq chemin de longueur t de s_i à u, minimise d(u, g_i) et le nb de conflits 
 
 def update(P, u, i):
@@ -29,19 +33,23 @@ def update(P, u, i):
 def mapfdichotomie(G_M, G_C, A):
     P = decoupled_exec(G_M, G_C, A)
     t = pick_time_with_conflict(P)
-    A_ordered = choose_order(A)
-    nb_it = 5
-    while nb_it > 0 :
-        P_changed = P
+    nb_it = 0
+    P_changed = []
+    while nb_it < 5 :
+        A_ordered = choose_order(A)
+        P_changed[nb_it] = P
         for i in range(1, len(A)):
-            if not(is_connected(G_C, A_ordered, i, t, P_changed)):
-                u = choose_best_neighbour(A, i, t, P_changed)
-                update(P_changed, u, i) #màj de P_i
-        if nb_conflicts(P_changed) < nb_conflicts(P):
-            P = P_changed
-        nb_it -= 1
+            if not(is_connected(G_C, A_ordered, i, t, P_changed[nb_it])):
+                u = choose_best_neighbour(G_C, A, i, t, P_changed[nb_it])
+                update(P_changed[nb_it], u, i) #màj de P_i
+            if nb_conflicts(P_changed[nb_it]) < nb_conflicts(P):
+                P = P_changed[nb_it]
+        nb_it += 1
 
-'''def find_path(G_M, G_C, A, n, constraints):
+'''def last_is_disconnected(G_M, G_C, A, P):
+    return False, 0
+
+def find_path(G_M, G_C, A, n, constraints):
     return Solver()
 
 def extract_exec(G_M, G_C, A, constraints):

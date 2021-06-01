@@ -2,56 +2,59 @@
 from igraph import *
 import numpy as np
 
-#2 graphes : mouvement et connexion
-#A : chaque agent est représenté par un couple (position, but)
-#P : liste des configurations ou liste des chemins (on choisira liste des configurations)
+#2 graphs : movement & connection
+#A : each agent is represented by a couple (current position, goal)
+#P : list of configurations [[a0_t,...] for each t] (or list of paths)
 
 def decoupled_exec(G_M, G_C, A) :
+    #algo shortest path for each agent : A*
     return 0
 
 def nb_conflicts(P) :
     return 0
 
-def is_connected(G_C, A, A_ordered, i, t, P): #a_i est connecté aux agents a_0... a_i-1 au temps t 
+def is_connected(G_C, A, A_ordered, i, t, P): #a_i is connected to agents a_0... a_i-1 at time t 
+    #look in the list of neighbours of a_i at time t if there is a_j, j<i
     return True
 
-def pick_time_with_conflict(P) :
+def pick_time_with_conflict(P) : #around the middle
     return len(P)//2
 
-def choose_order(A) : #on renvoie une liste d'indices qui correspond à l'ordre des agents
+def choose_order(A) : #return index list
     i = np.random(len(A))
     A_ordered = [i]
-    #BFS sur A selon la config initiale ou finale
+    #BFS on A depending on the initial or final configuration
     return A_ordered
 
 def choose_best_neighbour(G_C, A, A_ordered, i, t, P):
-    return 0 #voisin des a_0...a_i-1 tq chemin de longueur t de s_i à u, minimise d(u, g_i) et le nb de conflits 
+    return 0 #neighbour u of a_0...a_i-1 with path of length t from s_i to u, minimize d(u, g_i) and nb of conflicts 
 
 def update(P, u, i):
-    return P #update P avec a_i qui passe par u
+    return P #update P with a_i going through u
 
-def mapfdiviserpourregner(G_M, G_C, A):
+def mapfdivideandconquer(G_M, G_C, A):
     P = decoupled_exec(G_M, G_C, A)
     nb_it = 0
-    while nb_it < 5 :
+    while nb_it < 5 : #number of try to find a better P
         A_ordered = choose_order(A) 
-        P_changed = aux_divise(P,A, A_ordered, G_C, G_M, 0)
+        P_changed = aux_divide(P,A, A_ordered, G_C, G_M, 0)
         if nb_conflicts(P_changed) == 0 :
             return P_changed
         else :
-            nb_it+=1
+            nb_it+=1 #or if P_changed has less conflicts, replace P by P_changed
+    return 0
 
-def aux_divise(P,A, A_ordered, G_C, G_M, n):
-    if n < 5: 
+def aux_divide(P,A, A_ordered, G_C, G_M, n):
+    if n < 5: #number of recursive calls = 5
         t = pick_time_with_conflict(P)
         P_changed = P
         for i in range(1, len(A)):
             if not(is_connected(G_C,A, A_ordered, i, t, P_changed)):
                 u = choose_best_neighbour(G_C, A, A_ordered, i, t, P_changed)
-                update(P_changed, u, i) #màj de P_i
+                update(P_changed, u, i) #update of P_i
             if nb_conflicts(P_changed) < nb_conflicts(P):
                 P = P_changed
-        return np.concatanate(aux_divise(P[::len(P)//2],A, A_ordered, G_C, G_M, n+1), aux_divise(P[len(P)//2::],A,A_ordered, G_C, G_M, n+1))
+        return aux_divide(P[::len(P)//2],A, A_ordered, G_C, G_M, n+1) + aux_divide(P[len(P)//2::],A,A_ordered, G_C, G_M, n+1)
     else :
         return P
 

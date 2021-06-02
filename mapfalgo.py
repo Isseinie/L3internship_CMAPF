@@ -1,6 +1,6 @@
 #from pysat.solvers import Solver
-from igraph import *
 import numpy as np
+import igraph
 
 #2 graphs : movement & connection
 #A : each agent is represented by a couple (current position, goal)
@@ -15,7 +15,11 @@ def nb_conflicts(P) :
 
 def is_connected(G_C, A, A_ordered, i, t, P): #a_i is connected to agents a_0... a_i-1 at time t 
     #look in the list of neighbours of a_i at time t if there is a_j, j<i
-    return True
+    neighbours = igraph.neighbors(G_C, A[i][0], mode = "all")
+    for j in range(0, i):
+        if A[j][0] in neighbours:
+            return True
+    return False
 
 def pick_time_with_conflict(P) : #around the middle
     return len(P)//2
@@ -35,13 +39,13 @@ def update(P, u, i):
 def mapfdivideandconquer(G_M, G_C, A):
     P = decoupled_exec(G_M, G_C, A)
     nb_it = 0
-    while nb_it < 5 : #number of try to find a better P
+    while nb_it < 5 : #number of attempts to find a better P
         A_ordered = choose_order(A) 
         P_changed = aux_divide(P,A, A_ordered, G_C, G_M, 0)
         if nb_conflicts(P_changed) == 0 :
             return P_changed
         else :
-            nb_it+=1 #or if P_changed has less conflicts, replace P by P_changed
+            nb_it+=1 #if P_changed has less conflicts, replace P by P_changed
     return 0
 
 def aux_divide(P,A, A_ordered, G_C, G_M, n):

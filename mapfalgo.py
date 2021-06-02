@@ -24,10 +24,17 @@ def is_connected(G_C, A, A_ordered, i, t, P): #a_i is connected to agents a_0...
 def pick_time_with_conflict(P) : #around the middle
     return len(P)//2
 
-def choose_order(A) : #return index list
+def choose_order(G_C, A) : #return index list
     i = np.random(len(A))
     A_ordered = [i]
     #BFS on A depending on the initial or final configuration
+    queue = igraph.neighbors(G_C, A[i][0], mode = "all")
+    while len(A_ordered)<len(A):
+        v = queue.pop(0)
+        for j in range(0, len(A)):
+            if A[j][0]==v :
+                A_ordered.append(j)
+                queue += igraph.neighbors(G_C, A[j][0], mode = "all")
     return A_ordered
 
 def choose_best_neighbour(G_C, A, A_ordered, i, t, P):
@@ -40,7 +47,7 @@ def mapfdivideandconquer(G_M, G_C, A):
     P = decoupled_exec(G_M, G_C, A)
     nb_it = 0
     while nb_it < 5 : #number of attempts to find a better P
-        A_ordered = choose_order(A) 
+        A_ordered = choose_order(G_C, A) 
         P_changed = aux_divide(P,A, A_ordered, G_C, G_M, 0)
         if nb_conflicts(P_changed) == 0 :
             return P_changed

@@ -8,6 +8,7 @@ import igraph
 
 def decoupled_exec(G_M, G_C, A) :
     '''algo shortest path for each agent : A*
+    for now, we use a less efficient algorithm
     Output : execution P'''
     return 0
 
@@ -16,21 +17,21 @@ def nb_conflicts(P) :
     Outpub : int, number of conflicts'''
     return 0
 
-def is_connected(G_C, A, A_ordered_id, i, t, P): 
+def is_connected(G_C,A, A_ordered_id, i, t, P): 
     '''true if a_i is connected to agents a_0... a_i-1 at time t 
     look in the list of neighbours of a_i at time t if there is a_j, j<i'''
-    neighbours = igraph.neighbors(G_C, A[i][0], mode = "all")
+    neighbours = igraph.neighbors(G_C, P[t][i][0], mode = "all")
     for j in range(0, i):
-        if A[A_ordered_id[j]][0] in neighbours:
+        if P[t][A_ordered_id[j]][0] in neighbours:
             return True
     return False
 
 def pick_time_with_conflict(P) : 
     '''Choose t around the middle of the execution, with conflicts '''
     for i in range(0,len(P)//2):
-        if nb_conflicts(P[len(P)//2 + i] > 0 :
+        if nb_conflicts(P[len(P)//2 + i]) > 0 :
             return len(P)//2 +i 
-        elif nb_conflicts(P[len(P)//2 - i] > 0 :
+        elif nb_conflicts(P[len(P)//2 - i]) > 0 :
             return len(P)//2 -i 
     return len(P)//2
 
@@ -77,7 +78,7 @@ def aux_divide(P,A, A_ordered_id, G_C, G_M, n):
     if n < 5: #number of recursive calls = 5
         t = pick_time_with_conflict(P)
         P_changed = P
-        for i in range(1, len(A)):
+        for i in A_ordered_id:
             if not(is_connected(G_C,A, A_ordered_id, i, t, P_changed)):
                 u = choose_best_neighbour(G_C, A, A_ordered_id, i, t, P_changed)
                 update(G_M, G_C, P_changed, u, i, t) #update of P_i

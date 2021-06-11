@@ -10,7 +10,7 @@ from copy import deepcopy
 def decoupled_exec(G_M, sources, targets) :
     '''algo shortest path for each agent : A*
     for now, we use a less efficient algorithm
-    Output : execution P'''
+    Output : execution configs'''
     paths = []
     for a in range(0, len(sources)) :
        paths.append(extract_path_from_pred(get_pred(G_M, sources[a], targets[a]),sources[a], targets[a])) 
@@ -124,44 +124,50 @@ def pick_path_of_length(G_M, start, arrival, t):
     return res
 
 
-def choose_best_neighbour(G_M, G_C, sources, targets, A_ordered_id, i, t, exec):
-    '''Choose a neighbour u of a_0...a_i-1 with path of length t from s_i to u, minimize d(u, g_i) and nb of conflicts '''
+def execution_with_best_neighbour(G_M, G_C, sources, targets, A_ordered_id, i, t, exec):
+    '''Choose a neighbour u of a_0...a_i-1 with path of length t from s_i to u, minimize d(u, g_i) and nb of conflicts 
+    Output : execution with a_i going through u at t'''
     Neighbours = []
     for j in range(0,i):
         Neighbours+= G_C.neighbors(exec[t][A_ordered_id[j]], mode = "all")
     min_dist = len(exec)
     min_nb_conflicts = nb_conflicts(exec, G_C)
     best = Neighbours[0]
+    best_exec = deepcopy(exec)
     for u in Neighbours :
-        p_final = decoupled_exec(G_M, G_C, [u], [targets[i]])
+        dist_u_gi = len(decoupled_exec(G_M, [u], [targets[i]]))
         paths = pick_path_of_length(G_M, sources[i], u, t)
         for p in paths:
-            exec_copy = deepcopy(exec)
+            exec_first = [deepcopy(exec[time]) for time in range(t)]
             for time in range(t)):
-                exec_copy[time][i] = p[time]
-            for time in range(len(p_final)):
-                exec_copy[time+t][i] = p_final[time]
-            if len(p_final) < min_dist :
-                if nb_conflicts(exec_copy, G_C) < min_nb_conflicts:
+                exec_first[time][i] = p[time]
+            sources_second = [exec[t][j] for j in range(0, len(exec[0]))]
+            targets_second = [exec[len(exec)][j] for j in range(0, len(exec[0]))]
+            sources_second[i] = u
+            exec_second = decoupled_exec(G_M, sources_second, targets_second)
+            exec_tested = exec_first+exec_second
+            if dist_u_gi < min_dist :
+                if nb_conflicts(exec_tested, G_C) < min_nb_conflicts:
                     best = u
-                    min_dist = len(p_final)
-                    min_nb_conflicts = nb_conflicts(exec_copy, G_C)
+                    min_dist = dist_u_gi
+                    min_nb_conflicts = nb_conflicts(exec_tested, G_C)
+                    best_exec = exec_tested
         #if there is one, then compute the distance d(u, g_i) and the nb of conflicts: 
         #if it's less than min_dist then and min_nb_conflicts then replace best by u
-    return best
+    return best_exec
 
 
 
 
-def update(G_M, exec, u, i, t):
-    '''update exec with a_i going through u at t'''
+'''def update(G_M, exec, u, i, t):
+    ''update exec with a_i going through u at t''
     sources_first = [exec[0][j] for j in range(0, len(exec[0]))]
     targets_first = [exec[t][j] for j in range(0, len(exec[0]))]
     targets_first[i] = u
     sources_second = [exec[t][j] for j in range(0, len(exec[0]))]
     targets_second = [exec[len(exec)][j] for j in range(0, len(exec[0]))]
     sources_second[i] = u
-    return decoupled_exec(G_M, sources_first, targets_first) + decoupled_exec(G_M, sources_second, targets_second)
+    return decoupled_exec(G_M, sources_first, targets_first) + decoupled_exec(G_M, sources_second, targets_second)'''
 
 
 
@@ -184,8 +190,7 @@ def aux_divide(exec, sources, targets, A_ordered_id, G_C, G_M, n):
         exec_changed = deepcopy(exec)
         for i in A_ordered_id:
             if not(is_ordered_connected(G_C, A_ordered_id, i, t, exec_changed)):
-                u = choose_best_neighbour(G_M,G_C, sources, A_ordered_id, i, t, exec_changed)
-                update(G_M, exec_changed, u, i, t) #update of exec_i
+                exec_changed = execution_with_best_neighbour(G_M,G_C, sources, A_ordered_id, i, t, exec_changed) #update of exec_i
             if nb_conflicts(exec_changed, G_C) < nb_conflicts(exec):
                 exec = exec_changed
         return aux_divide(exec[::len(exec)//2],sources, targets, A_ordered_id, G_C, G_M, n+1) + aux_divide(exec[len(exec)//2::], sources, targets, A_ordered_id, G_C, G_M, n+1)

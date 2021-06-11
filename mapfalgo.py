@@ -3,6 +3,7 @@ import numpy as np
 import igraph
 from copy import deepcopy
 
+
 #2 graphs : movement & connection
 #A : list of sources and targets (agent a goes from sources[a] to targets[a])
 #exec : list of configurations [[a0_t,...] for each t] (or list of paths)
@@ -14,9 +15,9 @@ def decoupled_exec(G_M, sources, targets) :
     paths = []
     for a in range(0, len(sources)) :
        paths.append(extract_path_from_pred(get_pred(G_M, sources[a], targets[a]),sources[a], targets[a])) 
-    configs = [targets for t in max(paths.map(len))]
+    configs = [deepcopy(targets) for t in range(max(map(len, paths)))]
     for i_a in range(0, len(paths)) :
-        for t in len(paths[i_a]):
+        for t in range(len(paths[i_a])):
             configs[t][i_a] = paths[i_a][t]
     return configs
 
@@ -24,15 +25,16 @@ def extract_path_from_pred(pred, source, dest) :
     if source == dest :
         return [source]
     else :
-        extract_path_from_pred(pred, source, pred[dest])+ [dest]
+        return extract_path_from_pred(pred, source, pred[dest])+ [dest]
 
 
 def get_pred(G_M, source, dest) :
-    pred = [-1 for x in len(G_M.vcount())]
+    pred = [-1 for x in range(G_M.vcount())]
     queue = [source]
-    visited = [False for x in len(G_M.vcount())]
+    visited = [False for x in range(G_M.vcount())]
     while len(queue) > 0 :
-        x = queue.pop()
+        x = queue.pop(0)
+        visited[x] = True
         if x == dest :
             return pred
         neighbours = G_M.neighbors(x)
@@ -49,7 +51,10 @@ def nb_conflicts(exec, G_C) :
     '''Use an algorithm already created or use A_ordered to see for each configuration if there is a disconnected agent 
     Input : execution exec
     Output : int number of conflicts'''
-    return len(filter(lambda x : not x, map(lambda config : is_connected(config, G_C), exec)))
+    print(exec)
+    return 0
+    is_connected_array = map(lambda config : is_connected(config, G_C), exec)
+    return len(list(filter(lambda x : not x, is_connected_array)))
     
 
 def is_connected(config, G_C):
@@ -90,7 +95,7 @@ def pick_time_with_conflict(exec, G_C) :
 def choose_order(G_C, A) :
     '''Choose an order of agents
     Output : list of index '''
-    i = np.random(len(A))
+    i = np.random.randint(0, len(A), 1)[0]
     A_ordered_id = [i]
     #BFS on A depending on the initial configuration
     queue = G_C.neighbors(A[i], mode = "all")
@@ -105,7 +110,7 @@ def choose_order(G_C, A) :
 
 
 
-def path_of_length(G_M, start, arrival, t):
+'''def path_of_length(G_M, start, arrival, t):
     if t == 0 :
         if start == arrival : 
             return [arrival] 
@@ -121,7 +126,7 @@ def pick_path_of_length(G_M, start, arrival, t):
     for p in paths :
         if len(p) == t :
             res.append(p)
-    return res
+    return res'''
 
 
 def execution_with_best_neighbour(G_M, G_C, sources, targets, A_ordered_id, i, t, exec):
@@ -135,72 +140,83 @@ def execution_with_best_neighbour(G_M, G_C, sources, targets, A_ordered_id, i, t
     best = Neighbours[0]
     best_exec = deepcopy(exec)
     for u in Neighbours :
-        dist_u_gi = len(decoupled_exec(G_M, [u], [targets[i]]))
-        paths = pick_path_of_length(G_M, sources[i], u, t)
+        dist_u_gi = len(decoupled_exec(G_M, [u], [targets[i]])) #d(u, g_i)
+        '''paths = pick_path_of_length(G_M, sources[i], u, t) #get possible paths for a_i through u at t
         for p in paths:
-            exec_first = [deepcopy(exec[time]) for time in range(t)]
-            for time in range(t)):
-                exec_first[time][i] = p[time]
-            sources_second = [exec[t][j] for j in range(0, len(exec[0]))]
-            targets_second = [exec[len(exec)][j] for j in range(0, len(exec[0]))]
-            sources_second[i] = u
-            exec_second = decoupled_exec(G_M, sources_second, targets_second)
-            exec_tested = exec_first+exec_second
-            if dist_u_gi < min_dist :
-                if nb_conflicts(exec_tested, G_C) < min_nb_conflicts:
-                    best = u
-                    min_dist = dist_u_gi
-                    min_nb_conflicts = nb_conflicts(exec_tested, G_C)
-                    best_exec = exec_tested
+            exec_first = [deepcopy(exec[time]) for time in range(t)] #execution from beginning to time t
+            for time in range(t):
+                exec_first[time][i] = p[time]#replace path of a_i by the found one'''
+        sources_first = [sources[j] for j in range(len(sources))]
+        targets_first = [exec[t][j] for j in range(len(sources))]
+        targets_first[i] = u
+        sources_second = [exec[t][j] for j in range(len(sources))]
+        targets_second = [targets[j] for j in range(len(sources))]
+        sources_second[i] = u
+        exec_tested = decoupled_exec(G_M, sources_first, targets_first)+decoupled_exec(G_M, sources_second, targets_second)
+        if dist_u_gi < min_dist :
+            if nb_conflicts(exec_tested, G_C) < min_nb_conflicts:
+                best = u
+                min_dist = dist_u_gi
+                min_nb_conflicts = nb_conflicts(exec_tested, G_C)
+                best_exec = exec_tested
         #if there is one, then compute the distance d(u, g_i) and the nb of conflicts: 
         #if it's less than min_dist then and min_nb_conflicts then replace best by u
     return best_exec
 
 
+###Algorithm must return list of paths
 
-
-'''def update(G_M, exec, u, i, t):
-    ''update exec with a_i going through u at t''
-    sources_first = [exec[0][j] for j in range(0, len(exec[0]))]
-    targets_first = [exec[t][j] for j in range(0, len(exec[0]))]
-    targets_first[i] = u
-    sources_second = [exec[t][j] for j in range(0, len(exec[0]))]
-    targets_second = [exec[len(exec)][j] for j in range(0, len(exec[0]))]
-    sources_second[i] = u
-    return decoupled_exec(G_M, sources_first, targets_first) + decoupled_exec(G_M, sources_second, targets_second)'''
-
-
-
-
-def mapfdivideandconquer(G_M, G_C, sources, targets):
-    exec = decoupled_exec(G_M, sources, targets)
+def mapfdivideandconquer(G_Mname, G_Cname, sources, targets):
+    '''This algorithm's method is divide and conquer '''
+    G_C = igraph.read(G_Cname)
+    G_M = igraph.read(G_Mname)
+    #exec = decoupled_exec(G_M, sources, targets)
     nb_it = 0
     while nb_it < 5 : #number of attempts to find a better P
         A_ordered_id = choose_order(G_C, sources) 
-        exec_changed = aux_divide(exec, sources, targets, A_ordered_id, G_C, G_M, 0)
+        exec_changed = aux_divide(sources, targets, A_ordered_id, G_C, G_M, 5) 
         if nb_conflicts(exec_changed, G_C) == 0 :
             return exec_changed
         else :
             nb_it+=1 #if exec_changed has less conflicts, exec is replaced by exec_changed
     return exec
 
-def aux_divide(exec, sources, targets, A_ordered_id, G_C, G_M, n):
-    if n < 5: #number of recursive calls = 5
+def aux_divide(sources, targets, A_ordered_id, G_C, G_M, n):
+    '''This function fix the connection problem around the middle of the execution, then redo it for each part'''
+    exec = decoupled_exec(G_M, sources, targets)
+    if nb_conflicts(exec, G_C) == 0 :
+        return exec
+    if n >0: #number of recursive calls = 5
         t = pick_time_with_conflict(exec, G_C)
-        exec_changed = deepcopy(exec)
         for i in A_ordered_id:
-            if not(is_ordered_connected(G_C, A_ordered_id, i, t, exec_changed)):
-                exec_changed = execution_with_best_neighbour(G_M,G_C, sources, A_ordered_id, i, t, exec_changed) #update of exec_i
-            if nb_conflicts(exec_changed, G_C) < nb_conflicts(exec):
-                exec = exec_changed
-        return aux_divide(exec[::len(exec)//2],sources, targets, A_ordered_id, G_C, G_M, n+1) + aux_divide(exec[len(exec)//2::], sources, targets, A_ordered_id, G_C, G_M, n+1)
+            if not(is_ordered_connected(G_C, A_ordered_id, i, t, exec)):
+                exec_changed = execution_with_best_neighbour(G_M,G_C, sources, targets, A_ordered_id, i, t, exec) #update of exec_i
+                if nb_conflicts(exec_changed, G_C) < nb_conflicts(exec, G_C):
+                    exec = exec_changed
+        return aux_divide(sources, exec[t], A_ordered_id, G_C, G_M, n-1) + aux_divide(exec[t], targets, A_ordered_id, G_C, G_M, n-1)
     else :
         return exec
 
 
+### Tests
+
+'''G_comm = igraph.read("map1.png_comm_uniform_grid_1_range_6.graphml")
+G_mov = igraph.read("map1.png_phys_uniform_grid_1_range_6.graphml")
+
+sources = [47, 14]
+targets = [55, 20]
+
+pred_ex = get_pred(G_mov, 47, 55)
+path_ex = extract_path_from_pred(pred_ex, 47, 55)
+
+exec_ex = decoupled_exec(G_mov, sources, targets)
+print(exec_ex)'''
 
 
 
+
+
+### Abandonned functions, algorithms
 
 
 '''def last_is_disconnected(G_M, G_C, A, P):
@@ -246,3 +262,13 @@ def MAPFmalin(G_M, G_C, A, final_state):
             else :
                 constraints.append(pick_config(G_M, G_C, A, t) != P_extr[t])'''
 
+
+'''def update(G_M, exec, u, i, t):
+    ''update exec with a_i going through u at t''
+    sources_first = [exec[0][j] for j in range(0, len(exec[0]))]
+    targets_first = [exec[t][j] for j in range(0, len(exec[0]))]
+    targets_first[i] = u
+    sources_second = [exec[t][j] for j in range(0, len(exec[0]))]
+    targets_second = [exec[len(exec)][j] for j in range(0, len(exec[0]))]
+    sources_second[i] = u
+    return decoupled_exec(G_M, sources_first, targets_first) + decoupled_exec(G_M, sources_second, targets_second)'''

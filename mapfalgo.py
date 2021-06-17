@@ -106,7 +106,7 @@ def is_connected(config, G_C):
     while len(queue) > 0 :
         x = queue.pop()
         for i_a in range(0, len(config)):
-            if G_C.are_connected(config[x], config[i_a]) :
+            if G_C.are_connected(config[x], config[i_a]) or config[x] == config[i_a]: #on ne gère pas les collisions
                 if not(visited[i_a]):
                     queue.append(i_a)
                     visited[i_a] = True
@@ -138,7 +138,7 @@ def pick_time_with_conflict(exec, G_C) :
             return max_len//2 +i 
         elif nb_conflicts([[exec_i[max_len//2 - i] for exec_i in exec]], G_C) > 0 :
             return max_len//2 -i 
-    return max_len//2
+    return 0
 
 def choose_order(G_C, A) :
     '''Choose an order of agents, by choosing the first randomly and the next by BFS
@@ -213,23 +213,23 @@ def mapfdivideandconquer(G_Mname, G_Cname, sources, targets):
         print("essai ", nb_it+1)
         A_ordered_id = choose_order(G_C, sources)
         print("ordre agents :", A_ordered_id) 
-        exec_changed = aux_divide(sources, targets, A_ordered_id, G_C, G_M, 5) 
+        exec_changed = aux_divide(sources, targets, A_ordered_id, G_C, G_M, 10) 
         if exec_changed!= None and nb_conflicts(exec_changed, G_C) == 0:
             return exec_changed
         else :
-            nb_it+=1 #if exec_changed has less conflicts, exec is replaced by exec_changed
-    return None
+            nb_it+=1
+    return exec_changed
 
 def aux_divide(sources, targets, A_ordered_id, G_C, G_M, n):
     '''This function fix the connection problem around the middle of the execution, then redo it for each part'''
     exec = decoupled_exec(G_M, sources, targets)
     if exec == None :
         return None
-    print("Appel ", 6-n, ":", exec)
+    print("Appel ", 11-n, ":", exec)
     if nb_conflicts(exec, G_C) == 0 :
         print("pas de conflit à l'appel", 6-n)
         return exec
-    if n >0: #number of recursive calls = 5
+    if n >0: #number of recursive calls = 10
         t = pick_time_with_conflict(exec, G_C)
         print(t)
         for i in A_ordered_id:

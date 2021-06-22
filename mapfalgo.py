@@ -13,8 +13,7 @@ import heapq
 
 def decoupled_exec(G_M, sources, targets) :
     '''algo shortest path for each agent : A*
-    for now, we use a less efficient algorithm
-    Output : execution configs'''
+    Output : execution (paths) or None if an agent has no path'''
     paths = []
     for a in range(0, len(sources)) :
        #pred_a = get_pred(G_M, sources[a], targets[a])
@@ -30,6 +29,9 @@ def decoupled_exec(G_M, sources, targets) :
     return paths
 
 def extract_path_from_pred(pred, source, dest) :
+    '''Get a path from the predecessor's array
+    Input : pred array, source and destination vertices
+    Output : path (list of vertices) '''
     if source == dest :
         return [source]
     else :
@@ -38,6 +40,9 @@ def extract_path_from_pred(pred, source, dest) :
 #BFS path finding
 
 def get_pred(G_M, source, dest) :
+    '''Simple algorithm which find the predecessor's array by exploring the neighbours of each vertice
+    Input : movement graph, source, destination
+    Output : array of predecessors, None if there is no path between source and dest '''
     pred = [-1 for x in range(G_M.vcount())]
     queue = [source]
     visited = [False for x in range(G_M.vcount())]
@@ -56,6 +61,9 @@ def get_pred(G_M, source, dest) :
 #A* path finding
 
 def get_pred_efficient(G_M, source, dest):
+    ''' A* algorithm with the heuristic 'shortest distance between the vertice and the destination'
+    Input : movement graph, source, destination
+    Output : array of predecessors, None if there is no path between source and dest '''
     pred = [-1 for x in range(G_M.vcount())]
     d = [-1 for x in range(G_M.vcount())]
     d[source]=0
@@ -76,6 +84,7 @@ def get_pred_efficient(G_M, source, dest):
     return None
 
 def get_distance(G_M, goal, agent):
+    ''' Compute the distance between the position of the agent and the goal'''
     xsource, ysource = G_M.vs[goal]["x_coord"], G_M.vs[goal]["y_coord"]
     xagent, yagent = G_M.vs[agent]["x_coord"], G_M.vs[agent]["y_coord"]
     return math.sqrt((xagent-xsource)**2 + (yagent-ysource)**2)
@@ -85,7 +94,7 @@ def get_distance(G_M, goal, agent):
 
 def nb_conflicts(exec, G_C) :
     '''Compute the number of connection conflicts found in the execution, by computing the number of configurations disconnected
-    Input : execution exec, communication graph G_C
+    Input : execution exec(not None), communication graph G_C
     Output : int number of conflicts'''
     list_config = [[0 for i_a in range(len(exec))] for t in range(len(exec[0]))]
     for i_a in range(len(exec)) :
@@ -221,13 +230,14 @@ def mapfdivideandconquer(G_Mname, G_Cname, sources, targets):
     return exec_changed
 
 def aux_divide(sources, targets, A_ordered_id, G_C, G_M, n):
-    '''This function fix the connection problem around the middle of the execution, then redo it for each part'''
+    '''This function fix the connection problem around the middle of the execution, then redo it for each part
+    Stops after 10 iterations'''
     exec = decoupled_exec(G_M, sources, targets)
     if exec == None :
         return None
     print("Appel ", 11-n, ":", exec)
     if nb_conflicts(exec, G_C) == 0 :
-        print("pas de conflit à l'appel", 6-n)
+        print("pas de conflit à l'appel", 11-n)
         return exec
     if n >0: #number of recursive calls = 10
         t = pick_time_with_conflict(exec, G_C)

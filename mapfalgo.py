@@ -5,6 +5,7 @@ import igraph
 from copy import deepcopy
 import heapq
 
+nb_recursion = 10
 
 #2 graphs : movement & connection
 #A : list of sources and targets (agent a goes from sources[a] to targets[a])
@@ -99,6 +100,7 @@ def nb_conflicts(exec, G_C) :
     list_config = [[0 for i_a in range(len(exec))] for t in range(len(exec[0]))]
     for i_a in range(len(exec)) :
         for t in range(len(exec[i_a])):
+            list_config[t] = [1 for i in range(len(list_config[t]))]
             list_config[t][i_a] = 1
             list_config[t][i_a] = exec[i_a][t]
     is_connected_array = map(lambda config : is_connected(config, G_C), list_config)
@@ -124,18 +126,20 @@ def is_connected(config, G_C):
 
 
 
-def is_ordered_connected(G_C, A_ordered_id, i, t, exec): 
+def is_ordered_connected(G_C, i, t, exec): 
     '''true if a_i is connected to agents a_0... a_i-1 at time t in the execution exec
-    look in the list of neighbours of a_i at time t if there is a_j, j before i in A_ordered_id
+    look in the list of neighbours of a_i at time t if there is a_j, j < i
     Input : Communication graph, list of agent's id ordered, id of a_i, time t, execution
     Output : boolean'''
     if i == 0 :
         return True
     neighbours = G_C.neighbors(exec[i][t], mode = "all")
     for j in range(0, i):
-        if exec[A_ordered_id[j]][t] in neighbours:
+        if exec[j][t] in neighbours:
             return True
     return False
+
+
 
 def pick_time_with_conflict(exec, G_C) : 
     '''Choose t around the middle of the execution, with conflicts 
@@ -143,11 +147,17 @@ def pick_time_with_conflict(exec, G_C) :
     Output : time t'''
     max_len = max(map(len, exec))
     for i in range(0,max_len//2):
-        if nb_conflicts([[exec_i[max_len//2 + i] for exec_i in exec]], G_C) > 0 :
+        if nb_conflicts([[exec_i[max_len//2 + i]] for exec_i in exec], G_C) > 0 :
             return max_len//2 +i 
-        elif nb_conflicts([[exec_i[max_len//2 - i] for exec_i in exec]], G_C) > 0 :
+        elif nb_conflicts([[exec_i[max_len//2 - i]] for exec_i in exec], G_C) > 0 :
             return max_len//2 -i 
-    return 0
+    if nb_conflicts([[exec_i[0]] for exec_i in exec], G_C) > 0:
+        return 0
+    if max_len%2==1 :
+        if nb_conflicts([[exec_i[max_len-1]] for exec_i in exec], G_C) > 0:
+            return max_len-1
+    return max_len//2
+
 
 def choose_order(G_C, A) :
     '''Choose an order of agents, by choosing the first randomly and the next by BFS
@@ -160,27 +170,31 @@ def choose_order(G_C, A) :
     while len(A_ordered_id)<len(A):
         v = queue.pop(0)
         for j in range(0, len(A)):
-            if A[j]==v :
+            if A[j]==v and not(j in A_ordered_id):
                 A_ordered_id.append(j)
                 queue += G_C.neighbors(A[j], mode = "all")
     return A_ordered_id
 
 
 
-def execution_with_best_neighbour(G_M, G_C, sources, targets, A_ordered_id, i, t, exec):
+def execution_with_best_neighbour(G_M, G_C, sources, targets, i, t, exec):
     '''Choose a neighbour u of a_0...a_i-1 which minimize d(u, g_i) and nb of conflicts 
     Output : execution with a_i going through u at t'''
     Neighbours = []
     for j in range(0,i):
-        Neighbours+= G_C.neighbors(exec[A_ordered_id[j]][t], mode = "all") #réordonner ?
-    min_dist = len(exec)
-    min_nb_conflicts = nb_conflicts(exec, G_C)
+        Neighbours+= G_C.neighbors(exec[j][t], mode = "all") #réordonner ?
+        Neighbours+= [exec[j][t]]
     best = Neighbours[0]
     best_exec = deepcopy(exec)
+    min_dist_u_goal = 2*len(exec[0])
+    min_nb_conflicts = nb_conflicts(exec, G_C)
+    min_diff = 2*len(exec[0]) #t-min_dist_start_u
     for u in Neighbours:
+        exec_si_u = decoupled_exec(G_M, [sources[i]], [u])
         exec_u_gi = decoupled_exec(G_M, [u], [targets[i]])
         if exec_u_gi!= None :
-            dist_u_gi = len(exec_u_gi) #d(u, g_i)
+            dist_start_u = len(exec_si_u[0])
+            dist_u_gi = len(exec_u_gi[0])
             sources_first = [sources[j] for j in range(len(sources))]
             targets_first = [exec[j][t] for j in range(len(sources))]
             targets_first[i] = u
@@ -191,10 +205,11 @@ def execution_with_best_neighbour(G_M, G_C, sources, targets, A_ordered_id, i, t
             exec_second = decoupled_exec(G_M, sources_second, targets_second)
             if exec_first!= None and exec_second!= None :
                 exec_tested = concatanate_executions(exec_first,exec_second)
-                if dist_u_gi < min_dist :#condition à revoir
-                    if nb_conflicts(exec_tested, G_C) < min_nb_conflicts:
+                if nb_conflicts(exec_tested, G_C) < min_nb_conflicts:
+                    if dist_u_gi < min_dist_u_goal:#or np.abs(t-dist_start_u) < min_diff:#condition à revoir + min_len_exec ?
                         best = u
-                        min_dist = dist_u_gi
+                        min_dist_u_goal = dist_u_gi
+                        min_diff = np.abs(t-dist_start_u)
                         min_nb_conflicts = nb_conflicts(exec_tested, G_C)
                         best_exec = exec_tested
         #if there is one, then compute the distance d(u, g_i) and the nb of conflicts: 
@@ -222,40 +237,45 @@ def mapfdivideandconquer(G_Mname, G_Cname, sources, targets):
         print("essai ", nb_it+1)
         A_ordered_id = choose_order(G_C, sources)
         print("ordre agents :", A_ordered_id) 
-        exec_changed = aux_divide(sources, targets, A_ordered_id, G_C, G_M, 10) 
+        sources_ordered = [sources[i] for i in A_ordered_id]
+        targets_ordered = [targets[i] for i in A_ordered_id]
+        exec_changed = aux_divide(sources_ordered, targets_ordered, G_C, G_M, nb_recursion) 
         if exec_changed!= None and nb_conflicts(exec_changed, G_C) == 0:
-            return exec_changed
+            return [exec_changed[A_ordered_id[i]] for i in range(len(sources))]
         else :
             nb_it+=1
-    return exec_changed
+    return [exec_changed[A_ordered_id[i]] for i in range(len(sources))]
 
-def aux_divide(sources, targets, A_ordered_id, G_C, G_M, n):
+
+def aux_divide(sources, targets, G_C, G_M, n):
     '''This function fix the connection problem around the middle of the execution, then redo it for each part
     Stops after 10 iterations'''
     exec = decoupled_exec(G_M, sources, targets)
-    if exec == None :
-        return None
-    print("Appel ", 11-n, ":", exec)
+    if exec == None or len(exec)==1:
+        return exec
+    print("Appel ", nb_recursion+1-n, ":", exec)
     if nb_conflicts(exec, G_C) == 0 :
-        print("pas de conflit à l'appel", 11-n)
+        print("pas de conflit à l'appel", nb_recursion+1-n)
         return exec
     if n >0: #number of recursive calls = 10
+        print("nb conflicts = ", nb_conflicts(exec, G_C))
         t = pick_time_with_conflict(exec, G_C)
         print(t)
-        for i in A_ordered_id:
-            if not(is_ordered_connected(G_C, A_ordered_id, i, t, exec)):
-                exec_changed = execution_with_best_neighbour(G_M,G_C, sources, targets, A_ordered_id, i, t, exec) #update of exec_i
-                if nb_conflicts(exec_changed, G_C) < nb_conflicts(exec, G_C):
-                    exec = exec_changed
-        L1 =  aux_divide(sources, [exec_i[t] for exec_i in exec], A_ordered_id, G_C, G_M, n-1) 
-        L2 = aux_divide([exec_i[t] for exec_i in exec], targets, A_ordered_id, G_C, G_M, n-1)
+        for i in range(len(sources)):
+            if not(is_ordered_connected(G_C, i, t, exec)):
+                exec_changed = execution_with_best_neighbour(G_M,G_C, sources[:i+1], targets[:i+1], i, t, exec) #update of exec_i
+                if nb_conflicts(exec_changed, G_C) < nb_conflicts(exec[:i+1], G_C):
+                    exec[:i+1] = exec_changed
+        L1 =  aux_divide(sources, [exec_i[t] for exec_i in exec], G_C, G_M, n-1) 
+        L2 = aux_divide([exec_i[t] for exec_i in exec], targets, G_C, G_M, n-1)
         return concatanate_executions(L1, L2)
     else :
         return exec
 
 
+###Algorithm : 2nd version (CBS)
 
-### Tests
+
 
 '''G_comm = igraph.read("map1.png_comm_uniform_grid_1_range_6.graphml")
 G_mov = igraph.read("map1.png_phys_uniform_grid_1_range_6.graphml")
@@ -270,10 +290,13 @@ pred_ex = get_pred(G_mov, 47, 55)
 path_ex = extract_path_from_pred(pred_ex, 47, 55)
 
 exec_ex = decoupled_exec(G_mov, sources, targets)
-#print(exec2)
+exec_ex[0][2] = 10
+print(exec_ex)
 
-#print(nb_conflicts(exec2, G_comm))
-#print(G_comm.are_connected(18,10))
+print(nb_conflicts(exec_ex, G_comm))
+print(G_comm.are_connected(16,10))
+print(nb_conflicts([[16, 10]], G_comm))
+print(pick_time_with_conflict(exec_ex, G_comm))
 
 #print(concatanate_executions([[1,2,3], [4,5,6]], [[3,7,8],[6,9,10]]))
 

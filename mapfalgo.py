@@ -100,8 +100,6 @@ def nb_conflicts(exec, G_C) :
     list_config = [[0 for i_a in range(len(exec))] for t in range(len(exec[0]))]
     for i_a in range(len(exec)) :
         for t in range(len(exec[i_a])):
-            list_config[t] = [1 for i in range(len(list_config[t]))]
-            list_config[t][i_a] = 1
             list_config[t][i_a] = exec[i_a][t]
     is_connected_array = map(lambda config : is_connected(config, G_C), list_config)
     return len(list(filter(lambda x : not x, is_connected_array)))
@@ -167,13 +165,16 @@ def choose_order(G_C, A) :
     A_ordered_id = [i]
     #BFS on A, the initial configuration
     queue = G_C.neighbors(A[i], mode = "all")
-    while len(A_ordered_id)<len(A):
+    while len(A_ordered_id)<len(A) and len(queue)>0:
         v = queue.pop(0)
         for j in range(0, len(A)):
             if A[j]==v and not(j in A_ordered_id):
                 A_ordered_id.append(j)
                 queue += G_C.neighbors(A[j], mode = "all")
-    return A_ordered_id
+    if len(A_ordered_id)<len(A):
+        return None
+    else :
+        return A_ordered_id
 
 
 
@@ -188,7 +189,7 @@ def execution_with_best_neighbour(G_M, G_C, sources, targets, i, t, exec):
     best_exec = deepcopy(exec)
     min_dist_u_goal = 2*len(exec[0])
     min_nb_conflicts = nb_conflicts(exec, G_C)
-    min_diff = 2*len(exec[0]) #t-min_dist_start_u
+    #min_diff = 2*len(exec[0]) #t-min_dist_start_u
     for u in Neighbours:
         exec_si_u = decoupled_exec(G_M, [sources[i]], [u])
         exec_u_gi = decoupled_exec(G_M, [u], [targets[i]])
@@ -206,10 +207,11 @@ def execution_with_best_neighbour(G_M, G_C, sources, targets, i, t, exec):
             if exec_first!= None and exec_second!= None :
                 exec_tested = concatanate_executions(exec_first,exec_second)
                 if nb_conflicts(exec_tested, G_C) < min_nb_conflicts:
-                    if dist_u_gi < min_dist_u_goal:#or np.abs(t-dist_start_u) < min_diff:#condition à revoir + min_len_exec ?
+                    if dist_u_gi < min_dist_u_goal:
+                    #conditions en plus : np.abs(t-dist_start_u) < min_diff, len(exec_tested[0])<=min_len_exec ?
                         best = u
                         min_dist_u_goal = dist_u_gi
-                        min_diff = np.abs(t-dist_start_u)
+                        #min_diff = np.abs(t-dist_start_u)
                         min_nb_conflicts = nb_conflicts(exec_tested, G_C)
                         best_exec = exec_tested
         #if there is one, then compute the distance d(u, g_i) and the nb of conflicts: 
@@ -237,14 +239,15 @@ def mapfdivideandconquer(G_Mname, G_Cname, sources, targets):
         print("essai ", nb_it+1)
         A_ordered_id = choose_order(G_C, sources)
         print("ordre agents :", A_ordered_id) 
+        #We reorder the sources and targets
         sources_ordered = [sources[i] for i in A_ordered_id]
         targets_ordered = [targets[i] for i in A_ordered_id]
         exec_changed = aux_divide(sources_ordered, targets_ordered, G_C, G_M, nb_recursion) 
         if exec_changed!= None and nb_conflicts(exec_changed, G_C) == 0:
-            return [exec_changed[A_ordered_id[i]] for i in range(len(sources))]
+            return [exec_changed[A_ordered_id[i]] for i in range(len(sources))] #in the initial order
         else :
             nb_it+=1
-    return [exec_changed[A_ordered_id[i]] for i in range(len(sources))]
+    return None
 
 
 def aux_divide(sources, targets, G_C, G_M, n):

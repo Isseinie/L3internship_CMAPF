@@ -6,7 +6,6 @@ from copy import deepcopy
 import heapq
 from numpy import random
 
-from numpy.lib.utils import source
 
 nb_recursion = 10
 nb_attemps = 5
@@ -243,7 +242,7 @@ def mapf_algo(G_Mname, G_Cname, sources, targets):
         #We reorder the sources and targets
         sources_ordered = [sources[i] for i in A_ordered_id]
         targets_ordered = [targets[i] for i in A_ordered_id]
-        exec_changed = best_choice(sources_ordered, targets_ordered, G_C, G_M, nb_recursion) 
+        exec_changed = divide_and_conquer(sources_ordered, targets_ordered, G_C, G_M, nb_recursion) 
         if exec_changed!= None and nb_conflicts(exec_changed, G_C) == 0:
             return [exec_changed[A_ordered_id[i]] for i in range(len(sources))] #in the initial order
         else :
@@ -356,32 +355,35 @@ def best_choice(sources, targets, G_C, G_M, n):
 
 
 ###Tests
-'''G_comm = igraph.read("map1.png_comm_uniform_grid_1_range_6.graphml")
-G_mov = igraph.read("map1.png_phys_uniform_grid_1_range_6.graphml")
 
-print(G_mov.vcount())
+if __name__ == '__main__':
+    G_comm = igraph.read("map1.png_comm_uniform_grid_1_range_6.graphml")
+    G_mov = igraph.read("map1.png_phys_uniform_grid_1_range_6.graphml")
 
-sources = [47, 14]
-targets = [55, 20]
-sources2 = [18, 10]
-targets2 = [58, 62]
-exec2 = decoupled_exec(G_mov, sources2, targets2)
+    print(G_mov.vcount())
 
-pred_ex = get_pred(G_mov, 47, 55)
-path_ex = extract_path_from_pred(pred_ex, 47, 55)
+    sources = [47, 14]
+    targets = [55, 20]
+    sources2 = [18, 10]
+    targets2 = [58, 62]
+    exec2 = decoupled_exec(G_mov, sources2, targets2)
 
-exec_ex = decoupled_exec(G_mov, sources, targets)
-exec_ex[0][2] = 10
-print(exec_ex)
+    pred_ex = get_pred(G_mov, 47, 55)
+    path_ex = extract_path_from_pred(pred_ex, 47, 55)
 
-print(nb_conflicts(exec_ex, G_comm))
-print(G_comm.are_connected(16,10))
-print(nb_conflicts([[16, 10]], G_comm))
-print(pick_time_with_conflict(exec_ex, G_comm))
+    exec_ex = decoupled_exec(G_mov, sources, targets)
+    exec_ex[0][2] = 10
+    print(exec_ex)
 
-#print(concatanate_executions([[1,2,3], [4,5,6]], [[3,7,8],[6,9,10]]))
+    print(nb_conflicts(exec_ex, G_comm))
+    print(G_comm.are_connected(16,10))
+    print(nb_conflicts([[16, 10]], G_comm))
+    print(pick_time_with_conflict(exec_ex, G_comm))
 
-#print(G_mov.vs[3]["x_coord"])'''
+    #print(concatanate_executions([[1,2,3], [4,5,6]], [[3,7,8],[6,9,10]]))
+
+    #print(G_mov.vs[3]["x_coord"])
+
 
 
 

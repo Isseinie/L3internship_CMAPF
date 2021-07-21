@@ -1,0 +1,6 @@
+*.graphml
+create_graph_from_png.py
+*.pyc
+*.json
+**/__pycache__
+**/__pycache__/mapfalgo.cpython-38.pyc

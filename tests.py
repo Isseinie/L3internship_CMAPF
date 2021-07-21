@@ -29,12 +29,8 @@ def create_instance(G_Mname, G_Cname, G_size):
     last_seen=[[sources[a],sources[a], sources[a],sources[a]] for a in range(nb_agent+1)]
     targets = [sources[i] for i in range(nb_agent+1)]
     for step in range(nb_steps):
-        i=0
-        while i < nb_agent+1:
-            targets[i] = np.random.choice(G_M.neighbors(sources[i]))
-            if (mapfalgo.is_connected(targets[:i+1], G_C)) and (not(targets[i] in last_seen[i])):
-                last_seen[i]=last_seen[i][1:]+[targets[i]]
-                i+=1
+        #make tateo
+        0
     print("targets are", targets)
     return sources, targets
 

@@ -5,6 +5,7 @@ import igraph
 from copy import deepcopy
 import heapq
 from numpy import random
+import priorityqueue
 
 
 nb_recursion = 10
@@ -71,11 +72,11 @@ def get_pred_Astar(G_M, source, dest):
     pred = [-1 for x in range(G_M.vcount())]
     d = [-1 for x in range(G_M.vcount())]
     d[source]=0
-    heap = [(get_distance(G_M, dest, source), source)]
-    heapq.heapify(heap)
+    heap = priorityqueue.PriorityQueue(G_M.vcount())
+    heap.push(source, get_distance(G_M, dest, source))
     visited = [False for x in range(G_M.vcount())]
-    while len(heap) > 0 :
-        x = heapq.heappop(heap)[1]
+    while not(heap.is_empty()) :
+        x = heap.pop()
         visited[x] = True
         if x == dest :
             return pred
@@ -83,7 +84,7 @@ def get_pred_Astar(G_M, source, dest):
         for n in neighbours :
             if not(visited[n]) or d[n] > d[x] +1:
                 d[n] = d[x] + 1
-                heapq.heappush(heap, (get_distance(G_M, dest, n)+d[n], n))
+                heap.decrease(n, get_distance(G_M, dest, n)+d[n])
                 pred[n] = x
     return None
 
@@ -179,23 +180,32 @@ def choose_order(G_C, config) :
         return A_ordered_id
 
 
-
-
-
+#do this with a priority queue
 def execution_with_best_neighbour(G_M, G_C, sources, targets, i, t, middle):
     '''Choose a neighbour u of a_0...a_i-1 which minimize d(u, g_i) and nb of conflicts 
     Output: execution with a_i going through u at t'''
     Neighbours = []
-    for j in range(0,i):
-        Neighbours+= G_C.neighbors(middle[j], mode = "all") #réordonner ?
-        Neighbours+= [middle[j]]
+    inside = [False for x in range(G_M.vcount())]
+    # for j in range(0,i):
+    #     Neighbours+= G_C.neighbors(middle[j], mode = "all") #réordonner ?
+    #     Neighbours+= [middle[j]]
+    for j in range(0, i):
+        for v in G_C.neighbors(middle[j], mode = "all"):
+            if not(inside[v]):
+                Neighbours.append(v)
+                inside[v]=True
+        if not(inside[middle[j]]):
+            Neighbours.append(middle[j])
+            inside[middle[j]]=True
     best = Neighbours[0]
     best_exec = decoupled_exec(G_M, sources, targets)
     min_dist_u_goal = 2*len(best_exec[0])
     min_nb_conflicts = nb_conflicts(best_exec, G_C)
     min_len_exec = 2*len(best_exec)
     min_diff = 2*len(best_exec[0]) #t-min_dist_start_u
-    for u in Neighbours:
+    #for u in Neighbours:
+    for k in range(0,10):
+        u = np.random.choice(Neighbours, 1)[0]
         exec_si_u = decoupled_exec(G_M, [sources[i]], [u])
         exec_u_gi = decoupled_exec(G_M, [u], [targets[i]])
         if exec_u_gi!= None and exec_si_u!= None:
@@ -236,9 +246,9 @@ def mapf_algo(G_Mname, G_Cname, sources, targets):
     G_M = igraph.read(G_Mname)
     nb_it = 0
     while nb_it < nb_attemps : #number of attempts to find a better P
-        print("Attempt number ", nb_it+1)
+        #print("Attempt number ", nb_it+1)
         A_ordered_id = choose_order(G_C, sources)
-        print("Order of agents:", A_ordered_id) 
+        #print("Order of agents:", A_ordered_id) 
         #We reorder the sources and targets
         sources_ordered = [sources[i] for i in A_ordered_id]
         targets_ordered = [targets[i] for i in A_ordered_id]
@@ -256,14 +266,14 @@ def divide_and_conquer(sources, targets, G_C, G_M, n):
     exec = decoupled_exec(G_M, sources, targets)
     if exec == None or len(exec)==1:
         return exec
-    print("Call number ", nb_recursion+1-n, ":", exec)
+    #print("Call number ", nb_recursion+1-n, ":", exec)
     if nb_conflicts(exec, G_C) == 0 :
-        print("No conflict at call ", nb_recursion+1-n)
+        #print("No conflict at call ", nb_recursion+1-n)
         return exec
     if n >0: #number of recursive calls = 10
-        print("nb conflicts = ", nb_conflicts(exec, G_C))
+        #print("nb conflicts = ", nb_conflicts(exec, G_C))
         t = pick_time_with_conflict(exec, G_C)
-        print(t)
+        #print(t)
         middle = [] #the new configuration at t
         for i in range(len(sources)):
             if is_ordered_connected(G_C, i, t, exec, middle) :
